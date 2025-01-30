@@ -1,0 +1,61 @@
+# Initialize simulator
+set ns [new Simulator]
+
+# Create trace and NAM files
+set tr [open out.tr w]
+$ns trace-all $tr
+set nam [open out.nam w]
+$ns namtrace-all $nam
+
+# Create nodes
+set n1 [$ns node]
+set n2 [$ns node]
+
+# Assign labels to nodes
+$ns at 0.0 "$n1 label Sender"
+$ns at 0.0 "$n2 label Receiver"
+
+# Create the duplex link between Sender and Receiver with bandwidth and delay
+$ns duplex-link $n1 $n2 1Mb 200ms DropTail
+$ns duplex-link-op $n1 $n2 orient right
+
+# Create TCP agent (Sender) and attach it to node 1 (Sender)
+set tcp0 [new Agent/TCP]
+$tcp0 set class_ 1
+$ns attach-agent $n1 $tcp0
+$tcp0 set fid_ 1
+$tcp0 set window_ 1
+$tcp0 set maxcwnd_ 1
+
+# Create TCP Sink (Receiver) and attach it to node 2 (Receiver)
+set sink0 [new Agent/TCPSink]
+$ns attach-agent $n2 $sink0
+$ns connect $tcp0 $sink0
+
+# Attach an FTP application to the TCP agent to simulate data transfer
+set ftp0 [new Application/FTP]
+$ftp0 attach-agent $tcp0
+
+# Add trace annotations to monitor the transmission
+$ns at 1.0 "$ns trace-annotate \"Send packet 1\""
+$ns at 2.0 "$ns trace-annotate \"Send packet 2\""
+$ns at 3.0 "$ns trace-annotate \"Send packet 3\""
+
+# Start FTP data transfer
+$ns at 0.5 "$ftp0 start"
+
+# Stop simulation after 4 seconds
+$ns at 4.0 "finish"
+
+# Finish procedure to clean up and generate output
+proc finish {} {
+    global ns tr nam
+    $ns flush-trace
+    close $tr
+    close $nam
+    exec nam out.nam &
+    exit 0
+}
+
+# Run the simulation
+$ns run
